@@ -1,4 +1,4 @@
-// Using Node.js built-in SQLite (available since Node 22.5, no native compilation needed)
+// Встроенный SQLite в Node.js (нужен Node >= 22.5; на Node 20 модуль node:sqlite отсутствует).
 import { DatabaseSync } from 'node:sqlite';
 import path from 'path';
 import dotenv from 'dotenv';
@@ -11,8 +11,7 @@ const DB_PATH = process.env.DB_PATH
 
 const db = new DatabaseSync(DB_PATH);
 
-// Enable WAL mode for safe concurrent access alongside the Python Telegram bot
-db.exec("PRAGMA journal_mode=WAL");
+db.exec('PRAGMA journal_mode=WAL');
 
 export interface Product {
   id: number;

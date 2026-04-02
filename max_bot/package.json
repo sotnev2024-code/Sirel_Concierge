@@ -2,6 +2,9 @@
   "name": "sirel-max-bot",
   "version": "1.0.0",
   "description": "Sirel Max Messenger Bot",
+  "engines": {
+    "node": ">=22.5.0"
+  },
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
