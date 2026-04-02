@@ -1,0 +1,42 @@
+# Пример юнита systemd для Sirel_Concierge (Telegram + Max через start.py).
+#
+# Установка:
+#   1) sudo cp deploy/sirel-bots.service.example /etc/systemd/system/sirel-bots.service
+#   2) Отредактируйте User, WorkingDirectory, ExecStart под свой путь и пользователя.
+#   3) sudo systemctl daemon-reload
+#   4) sudo systemctl enable --now sirel-bots.service
+#
+# Если проект в /root/Sirel_Concierge: замените пути и поставьте User=root (лучше завести отдельного пользователя).
+#
+# Логи: journalctl -u sirel-bots.service -f
+
+[Unit]
+Description=Sirel Telegram + Max bots (start.py)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/Sirel_Concierge
+
+# venv Python первым в PATH
+Environment=PATH=/home/ubuntu/Sirel_Concierge/.venv/bin:/usr/local/bin:/usr/bin:/bin
+
+ExecStart=/home/ubuntu/Sirel_Concierge/.venv/bin/python3 start.py
+
+# Перезапуск при падении и при необработанных исключениях (процесс завершился)
+Restart=always
+RestartSec=15
+
+# Не крутить бесконечный цикл при поломанной конфигурации (опционально)
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+# Корректная остановка
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
