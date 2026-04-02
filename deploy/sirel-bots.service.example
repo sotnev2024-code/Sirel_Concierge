@@ -1,12 +1,14 @@
 # Пример юнита systemd для Sirel_Concierge (Telegram + Max через start.py).
 #
-# Установка:
-#   1) sudo cp deploy/sirel-bots.service.example /etc/systemd/system/sirel-bots.service
-#   2) Отредактируйте User, WorkingDirectory, ExecStart под свой путь и пользователя.
-#   3) sudo systemctl daemon-reload
-#   4) sudo systemctl enable --now sirel-bots.service
+# Быстрая установка (VPS, root, путь /root/Sirel_Concierge):
+#   cd /root/Sirel_Concierge && git pull && sudo bash deploy/install-systemd.sh
 #
-# Если проект в /root/Sirel_Concierge: замените пути и поставьте User=root (лучше завести отдельного пользователя).
+# Вручную:
+#   1) sudo cp deploy/sirel-bots.service.example /etc/systemd/system/sirel-bots.service
+#   2) Отредактируйте User, WorkingDirectory, ExecStart.
+#   3) sudo systemctl daemon-reload && sudo systemctl enable --now sirel-bots.service
+#
+# Готовый юнит под root: deploy/sirel-bots.service
 #
 # Логи: journalctl -u sirel-bots.service -f
 
