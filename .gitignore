@@ -1,0 +1,39 @@
+# Secrets — never commit
+.env
+.env.local
+max_bot/.env
+max_bot/.env.local
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.so
+
+# Node
+node_modules/
+max_bot/node_modules/
+
+# Build output (собирается: cd max_bot && npm run build)
+max_bot/dist/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Локальные данные бота
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+data/users_export.xlsx
+
+# Logs
+*.log
+npm-debug.log*
