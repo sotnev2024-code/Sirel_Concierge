@@ -35,6 +35,9 @@ function extra(e: ReplyExtra): ReplyExtra {
 const GUIDE_PATH = path.resolve(__dirname, '../../../data/guide.pdf');
 const PROJECT_ROOT = path.resolve(__dirname, '../../..');
 
+/** mtime (mtimeMs) файла guide.pdf на момент кэширования токена Max — если PDF заменили, кэш игнорируем. */
+const MAX_GUIDE_TOKEN_MTIME_KEY = 'max_guide_token_mtime';
+
 /** Max /answers rejects an empty body — use this for “silent” callback ack (noop / padding). */
 const CALLBACK_ACK_SILENT = { notification: '\u200b' };
 
@@ -216,33 +219,36 @@ async function sendGuide(ctx: AnyCtx): Promise<void> {
 
   try {
     const cacheKey = 'max_guide_file_token';
-    let cached = db.getSetting(cacheKey);
+    const st = fs.statSync(GUIDE_PATH);
+    const fileMtime = st.mtimeMs;
+    const boundMtime = db.getSetting(MAX_GUIDE_TOKEN_MTIME_KEY);
+    const cachedRaw = db.getSetting(cacheKey);
 
-    // Validate cached value
-    if (cached) {
+    let useCache = false;
+    if (cachedRaw && boundMtime !== null && boundMtime !== '' && Number(boundMtime) === fileMtime) {
       try {
-        const parsed = JSON.parse(cached) as Record<string, unknown>;
+        const parsed = JSON.parse(cachedRaw) as Record<string, unknown>;
         const pl = parsed?.payload as Record<string, unknown> | undefined;
-        if (!pl?.token && !pl?.url) {
-          db.setSetting(cacheKey, '');
-          cached = null;
-        }
+        if (pl?.token || pl?.url) useCache = true;
       } catch {
-        // Legacy plain token string — keep as-is if non-empty
+        if (cachedRaw.length > 0) useCache = true;
       }
+    }
+
+    if (!useCache) {
+      db.setSetting(cacheKey, '');
+      db.setSetting(MAX_GUIDE_TOKEN_MTIME_KEY, '');
     }
 
     let attachJson: unknown;
 
-    if (cached) {
+    if (useCache) {
       try {
-        attachJson = JSON.parse(cached);
+        attachJson = JSON.parse(cachedRaw!);
       } catch {
-        // Legacy plain token string
-        attachJson = { type: 'file', payload: { token: cached } };
+        attachJson = { type: 'file', payload: { token: cachedRaw } };
       }
     } else {
-      // Pass Buffer so uploadFromBuffer uses proper Blob (Node.js 24 compatible)
       const buf = fs.readFileSync(GUIDE_PATH);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const fileAttachment = await ctx.api.uploadFile({ source: buf as any }) as any;
@@ -255,8 +261,7 @@ async function sendGuide(ctx: AnyCtx): Promise<void> {
         return;
       }
       db.setSetting(cacheKey, JSON.stringify(attachJson));
-      // Max often returns attachment.not.ready on the first send right after /uploads; SDK retries after 1s.
-      // Short pause reduces a visible 400 in logs and avoids the extra round-trip.
+      db.setSetting(MAX_GUIDE_TOKEN_MTIME_KEY, String(fileMtime));
       await new Promise((r) => setTimeout(r, 800));
     }
 
@@ -266,6 +271,7 @@ async function sendGuide(ctx: AnyCtx): Promise<void> {
     if (userId !== undefined) db.setHasGuide(userId);
   } catch {
     db.setSetting('max_guide_file_token', '');
+    db.setSetting(MAX_GUIDE_TOKEN_MTIME_KEY, '');
     await ctx.reply('Не удалось отправить гайд. Попробуйте ещё раз.');
   }
 }

@@ -277,8 +277,9 @@ async def newsletter_guide(message: Message, state: FSMContext, bot):
     guide_path = os.path.join("data", "guide.pdf")
     await bot.download(message.document, destination=guide_path)
 
-    # Clear cached Max guide token so Max bot re-uploads with the new file
+    # Сброс кэша Max (токен + привязка к mtime файла на диске)
     await db.set_setting("max_guide_file_token", "")
+    await db.set_setting("max_guide_token_mtime", "")
 
     await message.answer(
         "Гайд успешно обновлён! Файл сохранён для Telegram и Max.",

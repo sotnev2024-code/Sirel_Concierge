@@ -845,6 +845,7 @@ export function registerAdminHandlers(bot: Bot): void {
       const ok = await downloadMaxFile(ctx, guidePath);
       if (ok) {
         db.setSetting('max_guide_file_token', '');
+        db.setSetting('max_guide_token_mtime', '');
         db.setSetting('guide_file_id', '');
         clearState(userId);
         await ctx.reply(
