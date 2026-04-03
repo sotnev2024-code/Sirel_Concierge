@@ -3,6 +3,7 @@ import fs from 'fs';
 import type { Bot } from '@maxhub/max-bot-api';
 import * as db from '../database';
 import * as kb from '../keyboards';
+import { uploadMaxFileWithFilename } from '../maxUpload';
 import {
   States,
   getState,
@@ -37,6 +38,9 @@ const PROJECT_ROOT = path.resolve(__dirname, '../../..');
 
 /** mtime (mtimeMs) файла guide.pdf на момент кэширования токена Max — если PDF заменили, кэш игнорируем. */
 const MAX_GUIDE_TOKEN_MTIME_KEY = 'max_guide_token_mtime';
+/** Смена схемы кэша (upload с именем guide.pdf) — однократный сброс у всех. */
+const MAX_GUIDE_CACHE_SCHEMA = '3';
+const MAX_GUIDE_CACHE_SCHEMA_KEY = 'max_guide_cache_schema';
 
 /** Max /answers rejects an empty body — use this for “silent” callback ack (noop / padding). */
 const CALLBACK_ACK_SILENT = { notification: '\u200b' };
@@ -218,6 +222,12 @@ async function sendGuide(ctx: AnyCtx): Promise<void> {
   }
 
   try {
+    if (db.getSetting(MAX_GUIDE_CACHE_SCHEMA_KEY) !== MAX_GUIDE_CACHE_SCHEMA) {
+      db.setSetting('max_guide_file_token', '');
+      db.setSetting(MAX_GUIDE_TOKEN_MTIME_KEY, '');
+      db.setSetting(MAX_GUIDE_CACHE_SCHEMA_KEY, MAX_GUIDE_CACHE_SCHEMA);
+    }
+
     const cacheKey = 'max_guide_file_token';
     const st = fs.statSync(GUIDE_PATH);
     const fileMtime = st.mtimeMs;
@@ -250,13 +260,10 @@ async function sendGuide(ctx: AnyCtx): Promise<void> {
       }
     } else {
       const buf = fs.readFileSync(GUIDE_PATH);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const fileAttachment = await ctx.api.uploadFile({ source: buf as any }) as any;
-      attachJson = typeof fileAttachment.toJson === 'function'
-        ? fileAttachment.toJson()
-        : null;
-      const pl = (attachJson as Record<string, unknown> | null)?.payload as Record<string, unknown> | undefined;
-      if (!pl?.token && !pl?.url) {
+      try {
+        attachJson = await uploadMaxFileWithFilename(ctx.api, buf, 'guide.pdf');
+      } catch (e) {
+        console.error('[sendGuide] upload', e);
         await ctx.reply('Не удалось отправить гайд. Попробуйте позже.');
         return;
       }

@@ -1,9 +1,10 @@
 import path from 'path';
 import fs from 'fs';
 import ExcelJS from 'exceljs';
-import type { Api, Bot } from '@maxhub/max-bot-api';
+import type { Bot } from '@maxhub/max-bot-api';
 import * as db from '../database';
 import * as kb from '../keyboards';
+import { uploadMaxFileWithFilename, type MaxFileAttachJson } from '../maxUpload';
 import {
   States,
   getState,
@@ -35,51 +36,6 @@ type ReplyExtra = {
 
 function extra(e: ReplyExtra): ReplyExtra {
   return e;
-}
-
-const MAX_FILE_UPLOAD_TIMEOUT_MS = 20000;
-
-type MaxFileAttachJson = { type: 'file'; payload: { token: string } };
-
-function tokenFromMaxUploadBody(data: unknown): string | undefined {
-  if (!data || typeof data !== 'object') return undefined;
-  const o = data as Record<string, unknown>;
-  for (const key of ['token', 'file_token', 'access_token'] as const) {
-    const v = o[key];
-    if (typeof v === 'string' && v.length > 0) return v;
-  }
-  if (o.body && typeof o.body === 'object') return tokenFromMaxUploadBody(o.body);
-  return undefined;
-}
-
-/** Multipart upload с нужным именем файла (SDK для Buffer шлёт UUID без .xlsx → в Max «ломается» тип). */
-async function uploadMaxFileWithFilename(
-  api: Api,
-  buffer: Buffer,
-  filename: string,
-): Promise<MaxFileAttachJson> {
-  const { url: uploadUrl } = await api.raw.uploads.getUploadUrl({ type: 'file' });
-  const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), MAX_FILE_UPLOAD_TIMEOUT_MS);
-  try {
-    const formData = new FormData();
-    formData.append('data', new Blob([buffer]), filename);
-    const res = await fetch(uploadUrl, {
-      method: 'POST',
-      body: formData,
-      signal: ac.signal,
-    });
-    if (!res.ok) {
-      const errText = await res.text().catch(() => '');
-      throw new Error(`Max file upload HTTP ${res.status}: ${errText}`);
-    }
-    const body: unknown = await res.json();
-    const token = tokenFromMaxUploadBody(body);
-    if (!token) throw new Error('Max file upload: no token in response');
-    return { type: 'file', payload: { token } };
-  } finally {
-    clearTimeout(timer);
-  }
 }
 
 function isAdmin(userId: number): boolean {

@@ -164,16 +164,17 @@ async def check_sub(callback: CallbackQuery, bot):
             guide_file_id = await db.get_setting("guide_file_id")
             guide_local = os.path.join("data", "guide.pdf")
 
-            if guide_file_id:
-                sent = await callback.message.answer_document(guide_file_id, caption="Ваш гайд по активам!")
-                # If Telegram returns a new file_id (e.g. after re-upload), keep it fresh
-                if sent and sent.document:
-                    await db.set_setting("guide_file_id", sent.document.file_id)
-            elif os.path.isfile(guide_local):
+            # Всегда отдаём локальный guide.pdf (тот же файл, что и в Max). Старый file_id мог указывать на другую версию.
+            if os.path.isfile(guide_local):
                 sent = await callback.message.answer_document(
                     FSInputFile(guide_local), caption="Ваш гайд по активам!"
                 )
-                # Cache the Telegram file_id for faster future sends
+                if sent and sent.document:
+                    await db.set_setting("guide_file_id", sent.document.file_id)
+            elif guide_file_id:
+                sent = await callback.message.answer_document(
+                    guide_file_id, caption="Ваш гайд по активам!"
+                )
                 if sent and sent.document:
                     await db.set_setting("guide_file_id", sent.document.file_id)
             else:
