@@ -84,6 +84,16 @@ async function startWithRetry(): Promise<void> {
         console.error('[Max] Test getUpdates failed:', e);
       }
 
+      // ── Register bot commands visible in the chat menu ────────────────
+      try {
+        await bot.api.setMyCommands([
+          { name: 'start', description: 'Запустить бота / Главное меню' },
+        ]);
+        console.log('[Max] Bot commands registered successfully');
+      } catch (e) {
+        console.error('[Max] Failed to register bot commands:', e);
+      }
+
       await bot.start();
       // bot.start() should block indefinitely; if it returned without error
       // it means polling exited unexpectedly — restart it
